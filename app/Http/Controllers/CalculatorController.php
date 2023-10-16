@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Calculator;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +18,7 @@ class CalculatorController extends Controller
     public function index(): Response 
     {
         return Inertia::render('Calculations/Index', [
-            //
+            'calculation' => Calculator::with('user:id,name')->latest()->get(),
         ]);
     }
 
@@ -37,9 +38,26 @@ class CalculatorController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        //
+        $validated = $request->validate([
+            'message' => 'string|max:255',
+        ]);
+    
+        // Safely evaluate the arithmetic expression
+        $result = $this->evaluateExpression($validated['message']);
+    
+        if ($result === null) {
+            return redirect()->back()->withErrors(['message' => 'Invalid calculation.']);
+        }
+    
+        // Save the result or the expression based on your requirements:
+        $request->user()->calculations()->create([
+            'message' => $result,
+        ]);
+    
+        return redirect(route('calculations.index'));
+    
     }
 
     /**
@@ -86,4 +104,30 @@ class CalculatorController extends Controller
     {
         //
     }
+    /**
+     * Safely evaluates a mathematical expression.
+     * 
+     * @param  string $expression
+     * @return float|null
+     */
+    private function evaluateExpression(string $expression): ?float
+    {
+        // Ensure the expression only contains numbers, and arithmetic operators
+        if (preg_match("/^[0-9+\-\/\*\. ()]+$/", $expression)) {
+            // Replace any potential malicious code
+            $expression = str_replace(['<?', '?>', '<?php'], '', $expression);
+            
+            try {
+                // Evaluate the expression
+                eval('$result = ' . $expression . ';');
+                return $result;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+    
+
 }
