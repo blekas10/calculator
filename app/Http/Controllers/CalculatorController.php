@@ -110,7 +110,7 @@ class CalculatorController extends Controller
      * @param  string $expression
      * @return float|null
      */
-    private function evaluateExpression(string $expression): ?float
+    private function evaluateExpression(string $expression): ?string
     {
         // Ensure the expression only contains numbers, and arithmetic operators
         if (preg_match("/^[0-9+\-\/\*\. ()]+$/", $expression)) {
@@ -120,14 +120,13 @@ class CalculatorController extends Controller
             try {
                 // Evaluate the expression
                 eval('$result = ' . $expression . ';');
-                return $result;
+                return $expression . ' = ' . $result;
             } catch (\Throwable $e) {
                 return null;
             }
         }
-
+    
         return null;
     }
-    
 
 }
